@@ -3,47 +3,41 @@ import random
 import sys
 import os
 
+
 import neat 
 import pygame
 
-from utils import blit_rotate_center, scale_image
+from utils import scale_image
 
 TRACK = scale_image(pygame.image.load(r"C:\Users\snehi\Desktop\RacingCar\track1.png"),1.1)
 
-TRACK_BORDER = scale_image(pygame.image.load(r"C:\Users\snehi\Desktop\RacingCar\Track border1.png"),1.1)
-TRACK_BORDER_MASK = pygame.mask.from_surface(TRACK_BORDER)
-
-FINISH = scale_image(pygame.image.load(r"C:\Users\snehi\Desktop\RacingCar\finish.png"), 0.5)
-FINISH_MASK = pygame.mask.from_surface(FINISH)
+#FINISH = scale_image(pygame.image.load(r"C:\Users\snehi\Desktop\RacingCar\finish.png"), 0.5)
 
 CAR = scale_image(pygame.image.load(r"C:\Users\snehi\Desktop\RacingCar\red-car.png"),0.05)
 
 CAR_SIZE_X = CAR.get_width()
 CAR_SIZE_Y = CAR.get_height()
 
-BORDER = (0, 0, 0, 0)
+BORDER = (0, 0, 0)
     
 WIDTH, HEIGHT = TRACK.get_width(), TRACK.get_height()
-
-poi=[]
-
-FPS = 60
 
 current_generation = 0 
 
 class AbstractCar:
     def __init__(self):
-        self.IMG = self.IMG
         
-        self.vel = 0
+        self.CAR = scale_image(pygame.image.load(r"C:\Users\snehi\Desktop\RacingCar\red-car.png"),0.05)
+        self.rotated_CAR = self.CAR
         
+        self.START_POS = [370, 390]
         self.angle = 300
-        self.x, self.y = self.START_POS
+        self.vel = 0
         
         
         self.speed_set = False
 
-        self.center = [self.x + CAR_SIZE_X/2, self.y + CAR_SIZE_Y/2]
+        self.center = [self.START_POS[0]+ CAR_SIZE_X/2, self.START_POS[1] + CAR_SIZE_Y/2]
 
         self.radars = []
         self.drawing_radars = []
@@ -54,31 +48,30 @@ class AbstractCar:
         self.time = 0
     
     def draw(self, WIN):
-        blit_rotate_center(WIN, self.IMG, (self.x, self.y), self.angle)
+        WIN.blit(self.rotated_CAR, self.START_POS)
+        self.draw_radar(WIN)
     
-    def draw_radar(self,WIN):
+    def draw_radar(self, WIN):
         for radar in self.radars:
-            START_POS = radar[0]
-            pygame.draw.line(WIN, (0,225,0), self.center, START_POS,1)
-            pygame.draw.circle(WIN, (255,255,0), START_POS, 5)
+            POS = radar[0]
+            pygame.draw.line(WIN, (0,225,0), self.center, POS,1)
+            pygame.draw.circle(WIN, (255,255,255), POS, 5)
 
     
-    def collide(self,mask,x=0, y=0):
+    def collide(self, TRACK):
         self.alive = True
-        car_mask = pygame.mask.from_surface(self.IMG)
-        offset = (int(self.x - x),int(self.y - y))
-        poi = [mask.overlap(car_mask, offset)]
-        for point in poi:
-            if point != None:
+        for point in self.corners:
+            
+            if TRACK.get_at((int(point[0]), int(point[1]))) == BORDER:
                 self.alive = False
                 break
-               
-    def check_radar(self,degree,TRACK_BORDER):
+
+    def check_radar(self,degree,TRACK):
         length = 0
         x = int(self.center[0] + math.cos(math.radians(360-(self.angle+degree)))* length)
         y = int(self.center[1] + math.cos(math.radians(360-(self.angle+degree)))* length)
 
-        while not TRACK.get_at((x, y)) != BORDER and length < 300 :
+        while not TRACK.get_at((x, y)) == BORDER and length < 300 :
             length = length + 1
             x = int(self.center[0] + math.cos(math.radians(360-(self.angle+degree)))* length)
             y = int(self.center[1] + math.cos(math.radians(360-(self.angle+degree)))* length)
@@ -86,8 +79,7 @@ class AbstractCar:
         dist = int(math.sqrt(math.pow(x - self.center[0], 2))) + math.pow(y - self.center[1],2)
         self.radars.append([(x,y),dist])
     
-    IMG = CAR
-    START_POS = [370, 390]
+    
     
 
     def update(self,TRACK):
@@ -96,7 +88,7 @@ class AbstractCar:
             self.vel = 20
             self.speed_set = True
         
-        self.rotated_car = blit_rotate_center(TRACK,self.IMG,self.center,self.angle)
+        self.rotated_Car = self.rotate_center(self.CAR,self.angle)
         self.START_POS[0] += (math.cos(math.radians(360 - self.angle))*self.vel)
         self.START_POS[0] = max(self.START_POS[0], 20) 
         self.START_POS[0] = min(self.START_POS[0], WIDTH - 120)
@@ -104,13 +96,20 @@ class AbstractCar:
         self.distance += self.vel
         self.time += 1
 
-        self.START_POS[1] += math.cos(math.radians(360 - self.angle))*self.vel
+        self.START_POS[1] += math.sin(math.radians(360 - self.angle))*self.vel
         self.START_POS[1] = max(self.START_POS[0], 20) 
         self.START_POS[1] = min(self.START_POS[0], WIDTH - 120)
 
         self.center = [int(self.START_POS[0]) + CAR_SIZE_X/2, int(self.START_POS[1])+ CAR_SIZE_Y/2]
 
-        self.collide(TRACK_BORDER_MASK)
+        length = 0.5 * CAR_SIZE_X
+        left_top = [self.center[0] + math.cos(math.radians(360 - (self.angle + 30))) * length, self.center[1] + math.sin(math.radians(360 - (self.angle + 30))) * length]
+        right_top = [self.center[0] + math.cos(math.radians(360 - (self.angle + 150))) * length, self.center[1] + math.sin(math.radians(360 - (self.angle + 150))) * length]
+        left_bottom = [self.center[0] + math.cos(math.radians(360 - (self.angle + 210))) * length, self.center[1] + math.sin(math.radians(360 - (self.angle + 210))) * length]
+        right_bottom = [self.center[0] + math.cos(math.radians(360 - (self.angle + 330))) * length, self.center[1] + math.sin(math.radians(360 - (self.angle + 330))) * length]
+        self.corners = [left_top, right_top, left_bottom, right_bottom]
+
+        self.collide(TRACK)
         self.radars.clear()
 
         for d in range(-90, 120, 45):
@@ -121,16 +120,23 @@ class AbstractCar:
         return_values = [0,0,0,0,0]
         for i, radar in enumerate(radars):
             return_values[i] = int(radar[1]/30)
+        
         return return_values    
-    
+
+    def is_alive(self):
+        return self.alive
+        
     def get_reward(self):
         return self.distance/(CAR_SIZE_X/2)
     
+    def rotate_center(self, image, angle):
+        rectangle = image.get_rect()
+        rotated_image = pygame.transform.rotate(image, angle)
+        rotated_rectangle = rectangle.copy()
+        rotated_rectangle.center = rotated_image.get_rect().center
+        rotated_image = rotated_image.subsurface(rotated_rectangle).copy()
+        return rotated_image
 
-    def is_alive(self):
-        # Basic Alive Function
-        return self.alive
-    
 def run_simulation(genomes,config):
 
     nets=[]
@@ -147,11 +153,10 @@ def run_simulation(genomes,config):
         cars.append(AbstractCar())
     
     clock = pygame.time.Clock()
-    clock.tick(FPS)
-
     generation_font = pygame.font.SysFont("Arial", 30)
     alive_font = pygame.font.SysFont("Arial", 20)
-
+    TRACK = scale_image(pygame.image.load(r"C:\Users\snehi\Desktop\RacingCar\track1.png"),1.1)
+    
     global current_generation
     current_generation += 1
 
@@ -181,6 +186,7 @@ def run_simulation(genomes,config):
                 still_alive += 1
                 car.update(TRACK)
                 genomes[i][1].fitness += car.get_reward()
+
         if still_alive == 0:
             break        
 
@@ -192,19 +198,20 @@ def run_simulation(genomes,config):
         for car in cars:
             if car.is_alive():
                car.draw(WIN)
-            pygame.display.update()
+            
 
-        text = generation_font.render("Generation: " + str(current_generation), True, (0,0,0))
+        text = generation_font.render("Generation: " + str(current_generation), True, (255,255,255))
         text_rect = text.get_rect()
-        text_rect.center = (900, 450)
+        text_rect.center = (100, 50)
         WIN.blit(text, text_rect)
 
-        text = alive_font.render("Still Alive: " + str(still_alive), True, (0, 0, 0))
+        text = alive_font.render("Still Alive: " + str(still_alive), True, (255,255,255))
         text_rect = text.get_rect()
-        text_rect.center = (900, 490)
+        text_rect.center = (150, 100)
         WIN.blit(text, text_rect)
 
-        
+        pygame.display.flip()
+        clock.tick(60)
 
 if __name__ == "__main__":
     
