@@ -64,7 +64,7 @@ class AbstractCar:
         x = int(self.center[0] + math.cos(math.radians(360-(self.angle+degree)))* length)
         y = int(self.center[1] + math.sin(math.radians(360-(self.angle+degree)))* length)
 
-        while not TRACK.get_at((x, y)) == BORDER and length < 500 :
+        while not TRACK.get_at((x, y)) == BORDER and length < 700 :
 
             length = length + 1
 
@@ -163,12 +163,12 @@ def run_simulation(genomes,config):
             output = nets[i].activate(car.get_data())
             choice = output.index(max(output))
             if choice == 0:
-                car.angle += 2
+                car.angle += 3
             elif choice == 1:
-                car.angle -= 2
+                car.angle -= 3
             elif choice == 2:
                 if(car.vel - 2 >=10):
-                    car.vel -= 5
+                    car.vel -= 3
             else:
                 car.vel += 2
     
